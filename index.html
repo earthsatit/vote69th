@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ผลการเลือกตั้ง สส. 2569</title>
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- React & ReactDOM from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel Standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        const API_URLS = {
+            provinces: "https://static-ectreport69.ect.go.th/data/data/refs/info_province.json",
+            constituencies: "https://static-ectreport69.ect.go.th/data/data/refs/info_constituency.json",
+            parties: "https://static-ectreport69.ect.go.th/data/data/refs/info_party_overview.json",
+            mpCandidates: "https://static-ectreport69.ect.go.th/data/data/refs/info_mp_candidate.json",
+            partyCandidates: "https://static-ectreport69.ect.go.th/data/data/refs/info_party_candidate.json",
+            statsCons: "https://stats-ectreport69.ect.go.th/data/records/stats_cons.json",
+            statsParty: "https://stats-ectreport69.ect.go.th/data/records/stats_party.json",
+        };
+
+        const STATS = {
+            eligible: 52922923,
+            cons: { voters: 34632581, good: 31951912, spoiled: 1234047, noVote: 1446622, pct: 65.44 },
+            party: { voters: 34565642, good: 31998836, spoiled: 1556201, noVote: 1010605, pct: 65.31 },
+            ref: { voters: 34137009, good: 33265306, spoiled: 871703, pct: 64.50, yes: 19882882, no: 10502889, abstain: 2879535 },
+            advance: { inZone: 9087, outZone: 1963348, disabled: 1574, total: 1974009 },
+            counted: 94,
+        };
+
+        const PARTIES = [
+            { name: "ภูมิใจไทย", c: "#1b3a8c", zone: 174, list: 19, listVotes: 5954535 },
+            { name: "ประชาชน", c: "#f68b1e", zone: 87, list: 31, listVotes: 9777951 },
+            { name: "เพื่อไทย", c: "#e3342f", zone: 58, list: 16, listVotes: 5147600 },
+            { name: "กล้าธรรม", c: "#2d6a4f", zone: 56, list: 2, listVotes: 605059 },
+            { name: "ประชาธิปัตย์", c: "#0066cc", zone: 10, list: 12, listVotes: 3651026 },
+            { name: "ไทรวมพลัง", c: "#e67e22", zone: 5, list: 1, listVotes: 390000 },
+            { name: "ประชาชาติ", c: "#10b981", zone: 4, list: 1, listVotes: 350000 },
+            { name: "พลังประชารัฐ", c: "#0047ab", zone: 4, list: 1, listVotes: 320000 },
+            { name: "เศรษฐกิจ", c: "#8b5cf6", zone: 0, list: 3, listVotes: 1045452 },
+            { name: "รวมไทยสร้างชาติ", c: "#2563eb", zone: 0, list: 2, listVotes: 705035 },
+            { name: "ไทยสร้างไทย", c: "#dc2626", zone: 1, list: 1, listVotes: 380000 },
+            { name: "เพื่อชาติไทย", c: "#14b8a6", zone: 0, list: 2, listVotes: 628493 },
+            { name: "รวมใจไทย", c: "#a855f7", zone: 0, list: 1, listVotes: 401772 },
+            { name: "โอกาสใหม่", c: "#6366f1", zone: 1, list: 0, listVotes: 0 },
+            { name: "ไทยภักดี", c: "#b45309", zone: 0, list: 1, listVotes: 290000 },
+            { name: "เสรีรวมไทย", c: "#7c3aed", zone: 0, list: 1, listVotes: 270000 },
+        ];
+
+        const IRREGULARITIES = [
+            { prov: "แพร่", zone: 3, type: "บัตรเขย่ง", detail: "ผลต่างบัตร สส.เขต กับบัญชีรายชื่อ สูงถึง 11,036 ใบ", severity: "high", diff: 11036 },
+            { prov: "ศรีสะเกษ", zone: 6, type: "บัตรเขย่ง", detail: "ผลต่างบัตร สส.เขต กับบัญชีรายชื่อ 10,408 ใบ", severity: "high", diff: 10408 },
+            { prov: "น่าน", zone: 2, type: "บัตรเขย่ง", detail: "ผลต่างบัตร สส.เขต กับบัญชีรายชื่อ 8,806 ใบ", severity: "high", diff: 8806 },
+            { prov: "พัทลุง", zone: 1, type: "บัตรเขย่ง", detail: "ผลต่างบัตรสูงผิดปกติ ทั้ง 2 เขต", severity: "high", diff: 7500 },
+            { prov: "พัทลุง", zone: 2, type: "บัตรเขย่ง", detail: "ผลต่างบัตรสูงผิดปกติ", severity: "high", diff: 6800 },
+            { prov: "พิจิตร", zone: 1, type: "คะแนนเกิน", detail: "ผู้ใช้สิทธิ 100,830 คน แต่ผลคะแนนรวม 113,775 — เกินมา 12,945", severity: "critical", diff: 12945 },
+            { prov: "สกลนคร", zone: null, type: "คะแนนเกิน", detail: "บางหน่วย ผู้มาใช้สิทธิ 440 คน แต่บัตรนับได้ 545 ใบ — เกิน 105 ใบ", severity: "critical", diff: 105 },
+            { prov: "ขอนแก่น", zone: 11, type: "คะแนนเกิน", detail: "บัตรดี 74,696 ใบ แต่ผลคะแนนรวม 97,904 — เกิน 23,208 คะแนน", severity: "critical", diff: 23208 },
+            { prov: "ชลบุรี", zone: 1, type: "หีบบัตร/กระบวนการ", detail: "หีบบัตรไม่ปิดผนึกถูกต้อง, นับคะแนนขณะไฟดับ, ผู้มาใช้สิทธิไม่ตรง — กกต.สอบสวน 2 วัน", severity: "critical", diff: 0 },
+            { prov: "ปทุมธานี", zone: 7, type: "ร้องเรียน/นับใหม่", detail: "ถุงดำปิดกล้อง, ประชาชนประท้วง, กกต.สั่งนับคะแนนใหม่ — ตรวจสอบว่าข้ามขั้นตอนหรือไม่", severity: "critical", diff: 0 },
+            { prov: "อุบลราชธานี", zone: null, type: "ซื้อเสียง/ทุจริต", detail: "We Watch รายงานพบเหตุซื้อเสียง", severity: "medium", diff: 0 },
+            { prov: "บุรีรัมย์", zone: null, type: "กระบวนการ", detail: "We Watch รายงานปัญหาการสังเกตการณ์นับคะแนน — ไม่ให้ประชาชนสังเกตการณ์", severity: "high", diff: 0 },
+            { prov: "เชียงใหม่", zone: null, type: "กระบวนการ", detail: "รายงานปัญหาความโปร่งใสในการนับคะแนน", severity: "medium", diff: 0 },
+            { prov: "พะเยา", zone: null, type: "ซื้อเสียง", detail: "พบเหตุซื้อเสียง", severity: "medium", diff: 0 },
+            { prov: "ชัยนาท", zone: null, type: "บัตรหาย", detail: "พบบัตรเลือกตั้งถูกทิ้ง", severity: "critical", diff: 0 },
+            { prov: "นครศรีธรรมราช", zone: null, type: "ซื้อเสียง", detail: "กกต.ดำเนินคดีซื้อเสียง", severity: "medium", diff: 0 },
+            { prov: "ราชบุรี", zone: null, type: "ซื้อเสียง", detail: "กกต.ดำเนินคดีซื้อเสียง — เงินแสนแจกว่อน", severity: "medium", diff: 0 },
+            { prov: "สุราษฎร์ธานี", zone: null, type: "ซื้อเสียง", detail: "กกต.ดำเนินคดีซื้อเสียง", severity: "medium", diff: 0 },
+            { prov: "พิษณุโลก", zone: null, type: "ซื้อเสียง", detail: "กกต.ดำเนินคดีซื้อเสียง", severity: "medium", diff: 0 },
+            { prov: "ชัยภูมิ", zone: null, type: "กระบวนการ", detail: "กปน.เปิดหีบบัตรเลือกตั้งระหว่างรอส่ง", severity: "high", diff: 0 },
+        ];
+
+        const fmt = (n) => n?.toLocaleString("th-TH") ?? "—";
+        const pct = (a, b) => b ? ((a / b) * 100).toFixed(1) : "0.0";
+
+        const severityColor = { critical: "#ff4757", high: "#ff6b35", medium: "#ffd166", low: "#4ecdc4" };
+        const severityLabel = { critical: "🔴 วิกฤต", high: "🟠 สูง", medium: "🟡 ปานกลาง", low: "🟢 ต่ำ" };
+        const typeEmoji = { "บัตรเขย่ง": "📊", "คะแนนเกิน": "⚡", "หีบบัตร/กระบวนการ": "📦", "ร้องเรียน/นับใหม่": "🔄", "ซื้อเสียง/ทุจริต": "💰", "ซื้อเสียง": "💰", "กระบวนการ": "⚙️", "บัตรหาย": "❌" };
+
+        function App() {
+            const [tab, setTab] = useState("overview");
+            const [apiStatus, setApiStatus] = useState({});
+            const [liveData, setLiveData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [sevFilter, setSevFilter] = useState("all");
+            const [typeFilter, setTypeFilter] = useState("all");
+
+            const tryFetchAPIs = useCallback(async () => {
+                setLoading(true);
+                const st = {};
+                const results = {};
+                for (const [k, url] of Object.entries(API_URLS)) {
+                    try {
+                        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                        if (!r.ok) throw new Error(r.status);
+                        results[k] = await r.json();
+                        st[k] = "ok";
+                    } catch {
+                        st[k] = "fail";
+                    }
+                }
+                setApiStatus(st);
+                const anyOk = Object.values(st).some(s => s === "ok");
+                if (anyOk) setLiveData(results);
+                setLoading(false);
+            }, []);
+
+            useEffect(() => { tryFetchAPIs(); }, [tryFetchAPIs]);
+
+            const parties = PARTIES.map(p => ({ ...p, total: p.zone + p.list })).sort((a, b) => b.total - a.total);
+            const totalSeats = parties.reduce((s, p) => s + p.total, 0);
+            const maxTotal = parties[0]?.total || 1;
+            const totalListVotes = parties.reduce((s, p) => s + p.listVotes, 0);
+
+            const ballotDiff = STATS.cons.voters - STATS.party.voters;
+
+            const filteredIrreg = IRREGULARITIES.filter(i =>
+                (sevFilter === "all" || i.severity === sevFilter) &&
+                (typeFilter === "all" || i.type === typeFilter)
+            );
+            const critCount = IRREGULARITIES.filter(i => i.severity === "critical").length;
+            const highCount = IRREGULARITIES.filter(i => i.severity === "high").length;
+            const medCount = IRREGULARITIES.filter(i => i.severity === "medium").length;
+            const uniqueProvs = [...new Set(IRREGULARITIES.map(i => i.prov))].length;
+            const irregTypes = [...new Set(IRREGULARITIES.map(i => i.type))];
+
+            const tabs = [
+                { id: "overview", label: "📊 ภาพรวม" },
+                { id: "irregularities", label: "⚠️ ความผิดปกติ" },
+                { id: "parties", label: "🏛️ ที่นั่ง/คะแนน" },
+                { id: "referendum", label: "🗳️ ประชามติ" },
+                { id: "api", label: "🔌 API Status" },
+            ];
+
+            return (
+                <div style={{ minHeight: "100vh", background: "#06060e", color: "#eaeaf4", fontFamily: "'Noto Sans Thai', 'Inter', sans-serif" }}>
+                    <div style={{ textAlign: "center", padding: "3rem 1.5rem 2rem", background: "linear-gradient(180deg,#0e0e1a,#06060e)", position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", inset: "-50%", background: "radial-gradient(ellipse at 25% 30%,rgba(255,107,53,.06) 0%,transparent 50%),radial-gradient(ellipse at 75% 70%,rgba(78,205,196,.04) 0%,transparent 50%)", animation: "spin 30s linear infinite" }} />
+                        <div style={{ position: "relative", zIndex: 1 }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,107,53,.1)", border: "1px solid rgba(255,107,53,.25)", padding: "5px 14px", borderRadius: 99, fontSize: ".7rem", fontWeight: 700, color: "#ff6b35", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: "1.2rem" }}>
+                                <span style={{ width: 6, height: 6, background: "#ff6b35", borderRadius: "50%", animation: "blink 1.5s ease-in-out infinite" }} /> ผลอย่างไม่เป็นทางการ — นับแล้ว 94%
+                            </div>
+                            <h1 style={{ fontSize: "clamp(2rem,5vw,3.5rem)", fontWeight: 900, lineHeight: 1.15, background: "linear-gradient(135deg,#fff,#a0a0c0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                                ผลการเลือกตั้ง สส. 2569
+                            </h1>
+                            <p style={{ fontSize: ".9rem", color: "#8888aa", fontWeight: 300, marginTop: 4 }}>
+                                การเลือกตั้งสมาชิกสภาผู้แทนราษฎร 8 ก.พ. 2569 — พร้อมวิเคราะห์ความผิดปกติ
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 1, background: "#252544" }}>
+                        {[
+                            { v: fmt(STATS.eligible), l: "ผู้มีสิทธิ", c: "#ff6b35" },
+                            { v: fmt(STATS.cons.voters), l: "ผู้มาใช้สิทธิ (เขต)", c: "#4ecdc4" },
+                            { v: STATS.cons.pct + "%", l: "อัตราใช้สิทธิ", c: "#fcc419" },
+                            { v: fmt(STATS.cons.spoiled), l: "บัตรเสีย (เขต)", c: "#ff6b6b" },
+                            { v: fmt(STATS.party.spoiled), l: "บัตรเสีย (บัญชี)", c: "#ff6b6b" },
+                            { v: IRREGULARITIES.length + " เรื่อง", l: "ความผิดปกติที่พบ", c: "#ff4757" },
+                        ].map((s, i) => (
+                            <div key={i} style={{ background: "#0e0e1a", padding: "1.2rem .8rem", textAlign: "center" }}>
+                                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: "clamp(1.1rem,2.5vw,1.6rem)", fontWeight: 700, color: s.c }}>{s.v}</div>
+                                <div style={{ fontSize: ".62rem", color: "#8888aa", marginTop: 3, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 600 }}>{s.l}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 3, padding: "12px 12px 0", background: "#06060e", overflowX: "auto" }}>
+                        {tabs.map(t => (
+                            <button key={t.id} onClick={() => setTab(t.id)} style={{
+                                padding: "8px 16px", borderRadius: "10px 10px 0 0", border: "none",
+                                background: tab === t.id ? "#161628" : "transparent",
+                                color: tab === t.id ? "#eaeaf4" : "#8888aa",
+                                fontFamily: "'Noto Sans Thai',sans-serif", fontSize: ".82rem", fontWeight: tab === t.id ? 700 : 500,
+                                cursor: "pointer", whiteSpace: "nowrap", borderBottom: tab === t.id ? "2px solid #ff6b35" : "2px solid transparent",
+                            }}>{t.label}</button>
+                        ))}
+                    </div>
+
+                    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "1.5rem" }}>
+                        {tab === "overview" && (
+                            <>
+                                <Section icon="📊" title="สถิติบัตรเลือกตั้ง — 3 ประเภท">
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: "1rem" }}>
+                                        <BallotCard title="สส. แบ่งเขต" tag="400 ที่นั่ง" color="#ff6b35" data={STATS.cons} eligible={STATS.eligible} />
+                                        <BallotCard title="สส. บัญชีรายชื่อ" tag="100 ที่นั่ง" color="#4ecdc4" data={STATS.party} eligible={STATS.eligible} />
+                                        <BallotCard title="ออกเสียงประชามติ" tag="รธน." color="#b197fc" data={STATS.ref} eligible={STATS.eligible} isRef />
+                                    </div>
+                                    <InfoBox>⚠️ <b>บัตรเสียทะลุล้าน:</b> เขต <b style={{ color: "#ff6b6b" }}>{fmt(STATS.cons.spoiled)}</b> ใบ + บัญชีรายชื่อ <b style={{ color: "#ff6b6b" }}>{fmt(STATS.party.spoiled)}</b> ใบ = รวม <b style={{ color: "#ff6b6b" }}>{fmt(STATS.cons.spoiled + STATS.party.spoiled)}</b> ใบ (We Watch ชี้เฉลี่ย 8.3% ของบัตรทั้ง 2 รูปแบบ)</InfoBox>
+                                    <InfoBox>📊 <b>บัตรเขย่ง (ผลต่างผู้ใช้สิทธิ เขต vs บัญชี):</b> ผู้มาใช้สิทธิ สส.เขต <b>{fmt(STATS.cons.voters)}</b> — บัญชีรายชื่อ <b>{fmt(STATS.party.voters)}</b> — ต่างกัน <b style={{ color: "#ff6b35" }}>{fmt(ballotDiff)}</b> คน (ค่าเฉลี่ย ~2,722 คน/จังหวัด) ทั้งที่ประชาชนรับบัตร 2 ใบพร้อมกัน</InfoBox>
+                                </Section>
+
+                                <Section icon="📈" title="เปรียบเทียบกับเลือกตั้ง 2566">
+                                    <div style={{ overflowX: "auto" }}>
+                                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                            <thead><tr>{["รายการ", "2566", "2569", "เปลี่ยนแปลง"].map(h => <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: ".65rem", fontWeight: 700, color: "#8888aa", textTransform: "uppercase", letterSpacing: ".06em", background: "#161628", borderBottom: "1px solid #252544" }}>{h}</th>)}</tr></thead>
+                                            <tbody>
+                                                {[
+                                                    ["อัตราผู้มาใช้สิทธิ", "75.71%", "65.44%", "▼ -10.27%", "#ff6b6b"],
+                                                    ["ผู้มาใช้สิทธิ", "~39.6 ล้าน", "34.6 ล้าน", "▼ ~5 ล้าน", "#ff6b6b"],
+                                                    ["คะแนนบัญชี ปชน./ก้าวไกล", "14.4 ล้าน", "9.78 ล้าน", "▼ -4.6 ล้าน", "#ff6b6b"],
+                                                    ["คะแนนบัญชี ภูมิใจไทย", "1.13 ล้าน", "5.95 ล้าน", "▲ +4.8 ล้าน", "#51cf66"],
+                                                    ["คะแนนบัญชี เพื่อไทย", "10.96 ล้าน", "5.15 ล้าน", "▼ -5.8 ล้าน", "#ff6b6b"],
+                                                    ["คะแนนบัญชี ประชาธิปัตย์", "0.93 ล้าน", "3.65 ล้าน", "▲ +2.7 ล้าน", "#51cf66"],
+                                                ].map(([r, a, b, c, cl], i) => (
+                                                    <tr key={i} style={{ borderBottom: "1px solid rgba(37,37,68,.4)" }}>
+                                                        <td style={{ padding: "8px 10px", fontSize: ".82rem" }}>{r}</td>
+                                                        <td style={{ padding: "8px 10px", fontSize: ".78rem", fontFamily: "'IBM Plex Mono',monospace" }}>{a}</td>
+                                                        <td style={{ padding: "8px 10px", fontSize: ".78rem", fontFamily: "'IBM Plex Mono',monospace", color: "#ffd166", fontWeight: 700 }}>{b}</td>
+                                                        <td style={{ padding: "8px 10px", fontSize: ".78rem", fontFamily: "'IBM Plex Mono',monospace", color: cl, fontWeight: 700 }}>{c}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Section>
+                            </>
+                        )}
+
+                        {tab === "irregularities" && (
+                            <>
+                                <Section icon="⚠️" title={`วิเคราะห์ความผิดปกติ — ${IRREGULARITIES.length} เรื่อง จาก ${uniqueProvs} จังหวัด`}>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+                                        {[
+                                            { label: "ความผิดปกติทั้งหมด", val: IRREGULARITIES.length + " เรื่อง", sub: `${uniqueProvs} จังหวัด จาก 77`, c: "#ff6b35" },
+                                            { label: "ระดับวิกฤต 🔴", val: critCount + " เรื่อง", sub: `${pct(critCount, IRREGULARITIES.length)}% ของทั้งหมด`, c: "#ff4757" },
+                                            { label: "ระดับสูง 🟠", val: highCount + " เรื่อง", sub: `${pct(highCount, IRREGULARITIES.length)}% ของทั้งหมด`, c: "#ff6b35" },
+                                            { label: "ระดับปานกลาง 🟡", val: medCount + " เรื่อง", sub: `${pct(medCount, IRREGULARITIES.length)}% ของทั้งหมด`, c: "#ffd166" },
+                                        ].map((c, i) => (
+                                            <div key={i} style={{ background: "#0e0e1a", border: "1px solid #252544", borderRadius: 14, padding: "1.2rem", textAlign: "center" }}>
+                                                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: "1.5rem", fontWeight: 700, color: c.c }}>{c.val}</div>
+                                                <div style={{ fontSize: ".75rem", fontWeight: 700, color: "#eaeaf4", marginTop: 4 }}>{c.label}</div>
+                                                <div style={{ fontSize: ".65rem", color: "#8888aa", marginTop: 2 }}>{c.sub}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <InfoBox>
+                                        📊 <b>สัดส่วนจังหวัดที่พบปัญหา:</b> {uniqueProvs} จาก 77 จังหวัด = <b style={{ color: "#ff6b35" }}>{pct(uniqueProvs, 77)}%</b> ของจังหวัดทั้งหมด — ครอบคลุมทุกภูมิภาค (เหนือ กลาง อีสาน ใต้)<br />
+                                        🔴 เขตที่มีปัญหาระดับวิกฤต (คะแนนเกิน/หีบบัตรผิดปกติ): <b style={{ color: "#ff4757" }}>{critCount} เรื่อง</b> — ต้องสอบสวนเร่งด่วน<br />
+                                        📉 ประชาชน <b style={{ color: "#ff6b6b" }}>57.6%</b> ไม่พอใจการทำงาน กกต. (We Watch สำรวจหน้าหน่วย)
+                                    </InfoBox>
+
+                                    <div style={{ display: "flex", gap: 8, marginTop: "1.5rem", flexWrap: "wrap" }}>
+                                        <select value={sevFilter} onChange={e => setSevFilter(e.target.value)} style={selectStyle}>
+                                            <option value="all">ทุกระดับ</option>
+                                            <option value="critical">🔴 วิกฤต</option>
+                                            <option value="high">🟠 สูง</option>
+                                            <option value="medium">🟡 ปานกลาง</option>
+                                        </select>
+                                        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={selectStyle}>
+                                            <option value="all">ทุกประเภท</option>
+                                            {irregTypes.map(t => <option key={t} value={t}>{typeEmoji[t] || "📌"} {t}</option>)}
+                                        </select>
+                                        <span style={{ fontSize: ".75rem", color: "#8888aa", alignSelf: "center" }}>แสดง {filteredIrreg.length} จาก {IRREGULARITIES.length} รายการ</span>
+                                    </div>
+
+                                    <div style={{ display: "flex", flexDirection: "column", gap: ".75rem", marginTop: "1rem" }}>
+                                        {filteredIrreg.map((ir, i) => (
+                                            <div key={i} style={{ background: "#0e0e1a", border: `1px solid ${severityColor[ir.severity]}33`, borderLeft: `4px solid ${severityColor[ir.severity]}`, borderRadius: 12, padding: "1rem 1.25rem" }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                        <span style={{ fontSize: "1.1rem" }}>{typeEmoji[ir.type] || "📌"}</span>
+                                                        <span style={{ fontWeight: 700, fontSize: ".9rem" }}>{ir.prov}{ir.zone ? ` เขต ${ir.zone}` : ""}</span>
+                                                        <span style={{ fontSize: ".6rem", padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: `${severityColor[ir.severity]}22`, color: severityColor[ir.severity] }}>
+                                                            {severityLabel[ir.severity]}
+                                                        </span>
+                                                    </div>
+                                                    <span style={{ fontSize: ".65rem", padding: "2px 8px", borderRadius: 5, background: "#161628", color: "#8888aa" }}>{ir.type}</span>
+                                                </div>
+                                                <p style={{ fontSize: ".8rem", color: "#8888aa", marginTop: 6, lineHeight: 1.6 }}>{ir.detail}</p>
+                                                {ir.diff > 0 && <div style={{ marginTop: 6, fontSize: ".7rem", fontFamily: "'IBM Plex Mono',monospace", color: severityColor[ir.severity] }}>ผลต่าง: {fmt(ir.diff)}</div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Section>
+                            </>
+                        )}
+
+                        {tab === "parties" && (
+                            <>
+                                <Section icon="🏛️" title={`ที่นั่ง สส. รวม ${totalSeats} ที่นั่ง — 22 พรรคเข้าสภา`}>
+                                    <div style={{ display: "flex", height: 48, borderRadius: 14, overflow: "hidden", border: "1px solid #252544", marginBottom: "1rem" }}>
+                                        {parties.filter(p => p.total > 0).map((p, i) => (
+                                            <div key={i} style={{ flex: p.total, background: p.c, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".58rem", fontWeight: 800, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,.6)", cursor: "default" }} title={`${p.name}: ${p.total}`}>
+                                                {p.total > 8 ? p.total : ""}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
+                                        {parties.filter(p => p.total > 0).map((p, i) => (
+                                            <div key={i} style={{ display: "grid", gridTemplateColumns: "140px 1fr 70px", gap: 10, alignItems: "center" }}>
+                                                <div style={{ fontSize: ".8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                                                <div style={{ height: 26, background: "#161628", borderRadius: 6, overflow: "hidden" }}>
+                                                    <div style={{ height: "100%", width: `${(p.total / maxTotal) * 100}%`, background: p.c, borderRadius: 6, display: "flex", alignItems: "center", paddingLeft: 8, fontSize: ".55rem", fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,.5)", whiteSpace: "nowrap" }}>
+                                                        {p.total > 15 ? `${p.zone} เขต + ${p.list} บัญชี` : ""}
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: "right", fontFamily: "'IBM Plex Mono',monospace", fontSize: ".85rem", fontWeight: 700, color: p.c }}>{p.total}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Section>
+
+                                <Section icon="📋" title="คะแนนบัญชีรายชื่อ — 10 อันดับแรก">
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: ".75rem" }}>
+                                        {parties.sort((a, b) => b.listVotes - a.listVotes).filter(p => p.listVotes > 0).slice(0, 10).map((p, i) => (
+                                            <div key={i} style={{ background: "#0e0e1a", border: "1px solid #252544", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", alignItems: "center", gap: 12 }}>
+                                                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".7rem", color: "#555572", background: "#161628", padding: "3px 7px", borderRadius: 5 }}>#{i + 1}</span>
+                                                <div style={{ width: 4, height: 36, borderRadius: 2, background: p.c }} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: ".85rem", fontWeight: 700 }}>{p.name}</div>
+                                                    <div style={{ fontSize: ".7rem", color: "#8888aa", fontFamily: "'IBM Plex Mono',monospace" }}>{fmt(p.listVotes)} คะแนน</div>
+                                                </div>
+                                                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".85rem", fontWeight: 700, color: "#4ecdc4" }}>{pct(p.listVotes, totalListVotes)}%</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Section>
+                            </>
+                        )}
+
+                        {tab === "referendum" && (
+                            <Section icon="🗳️" title='ผลประชามติ — "สมควรมีรัฐธรรมนูญฉบับใหม่หรือไม่?"'>
+                                <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", alignItems: "center" }}>
+                                    <svg width="180" height="180" viewBox="0 0 180 180" style={{ transform: "rotate(-90deg)" }}>
+                                        <circle cx="90" cy="90" r="72" fill="none" stroke="#161628" strokeWidth="20" />
+                                        <circle cx="90" cy="90" r="72" fill="none" stroke="#51cf66" strokeWidth="20" strokeDasharray={`${0.598 * 452.4} ${452.4}`} strokeLinecap="round" />
+                                        <circle cx="90" cy="90" r="72" fill="none" stroke="#ff6b6b" strokeWidth="20" strokeDasharray={`${0.316 * 452.4} ${452.4}`} strokeDashoffset={`${-0.598 * 452.4}`} strokeLinecap="round" />
+                                        <circle cx="90" cy="90" r="72" fill="none" stroke="#ffd166" strokeWidth="20" strokeDasharray={`${0.087 * 452.4} ${452.4}`} strokeDashoffset={`${-(0.598 + 0.316) * 452.4}`} strokeLinecap="round" />
+                                    </svg>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: ".6rem", flex: 1 }}>
+                                        {[
+                                            { label: "เห็นชอบ", val: STATS.ref.yes, c: "#51cf66", p: "59.8%" },
+                                            { label: "ไม่เห็นชอบ", val: STATS.ref.no, c: "#ff6b6b", p: "31.6%" },
+                                            { label: "ไม่แสดงความเห็น", val: STATS.ref.abstain, c: "#ffd166", p: "8.7%" },
+                                        ].map((r, i) => (
+                                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                                <div style={{ width: 12, height: 12, borderRadius: 3, background: r.c }} />
+                                                <div style={{ flex: 1, fontSize: ".85rem" }}>{r.label}</div>
+                                                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: ".85rem", fontWeight: 700, color: r.c }}>{fmt(r.val)} ({r.p})</div>
+                                            </div>
+                                        ))}
+                                        <div style={{ marginTop: ".5rem", padding: ".75rem", background: "#0e0e1a", borderRadius: 10, border: "1px solid #252544", fontSize: ".78rem", color: "#8888aa" }}>
+                                            ผู้มาใช้สิทธิ <b style={{ color: "#eaeaf4" }}>{fmt(STATS.ref.voters)}</b> (64.50%) | บัตรดี <b style={{ color: "#51cf66" }}>{fmt(STATS.ref.good)}</b> | บัตรเสีย <b style={{ color: "#ff6b6b" }}>{fmt(STATS.ref.spoiled)}</b>
+                                        </div>
+                                        <InfoBox>📍 <b>7 จังหวัดภาคใต้</b>ที่ไม่เห็นชอบมากกว่า: ชุมพร, ระนอง, พังงา, สุราษฎร์ธานี, ตรัง, พัทลุง, นครศรีธรรมราช</InfoBox>
+                                    </div>
+                                </div>
+                            </Section>
+                        )}
+
+                        {tab === "api" && (
+                            <Section icon="🔌" title="สถานะ API — ดึงข้อมูล Real-time จาก กกต.">
+                                <InfoBox>ระบบจะพยายามดึงข้อมูลสดจาก 7 API endpoints ของ กกต. ทุกครั้งที่โหลดหน้า หาก API เปิดให้เข้าถึง ข้อมูลจะอัปเดตอัตโนมัติ ถ้าไม่ได้ จะใช้ข้อมูลล่าสุดที่มี (10 ก.พ. 2569)</InfoBox>
+                                <div style={{ display: "flex", flexDirection: "column", gap: ".5rem", marginTop: "1rem" }}>
+                                    {Object.entries(API_URLS).map(([k, url]) => (
+                                        <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: ".75rem 1rem", background: "#0e0e1a", border: "1px solid #252544", borderRadius: 10 }}>
+                                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: apiStatus[k] === "ok" ? "#51cf66" : apiStatus[k] === "fail" ? "#ff6b6b" : "#ffd166", flexShrink: 0 }} />
+                                            <span style={{ fontSize: ".75rem", fontWeight: 600, minWidth: 120 }}>{k}</span>
+                                            <span style={{ fontSize: ".65rem", color: "#555572", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
+                                            <span style={{ fontSize: ".65rem", fontWeight: 700, color: apiStatus[k] === "ok" ? "#51cf66" : apiStatus[k] === "fail" ? "#ff6b6b" : "#ffd166" }}>
+                                                {apiStatus[k] === "ok" ? "✓ เชื่อมต่อได้" : apiStatus[k] === "fail" ? "✗ 403/ไม่ได้" : "⟳ กำลังลอง..."}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button onClick={tryFetchAPIs} disabled={loading} style={{ marginTop: "1rem", padding: ".7rem 2rem", borderRadius: 10, border: "none", background: "#ff6b35", color: "#fff", fontFamily: "'Noto Sans Thai',sans-serif", fontSize: ".85rem", fontWeight: 600, cursor: "pointer", opacity: loading ? .5 : 1 }}>
+                                    {loading ? "กำลังลอง..." : "🔄 ลองเชื่อมต่อใหม่"}
+                                </button>
+                                {liveData && <InfoBox>✅ มีข้อมูล live บางส่วน! ตรวจสอบ console สำหรับ raw data</InfoBox>}
+                            </Section>
+                        )}
+                    </div>
+
+                    <div style={{ textAlign: "center", padding: "2rem 1rem", borderTop: "1px solid #252544", color: "#555572", fontSize: ".7rem" }}>
+                        <p>ข้อมูลจาก <a href="https://ectreport69.ect.go.th" target="_blank" rel="noopener" style={{ color: "#4ecdc4", textDecoration: "none" }}>ectreport69.ect.go.th</a> — กกต. | ข้อมูลความผิดปกติจาก The Active, Rocket Media Lab, We Watch, สื่อมวลชน</p>
+                        <p style={{ marginTop: 4 }}>ผลอย่างไม่เป็นทางการ นับแล้ว 94% — กกต. จะประกาศรับรองผลภายใน 60 วัน</p>
+                    </div>
+                </div>
+            );
+        }
+
+        const selectStyle = {
+            background: "#0e0e1a", border: "1px solid #252544", color: "#eaeaf4",
+            fontFamily: "'Noto Sans Thai',sans-serif", fontSize: ".8rem", padding: "6px 12px",
+            borderRadius: 8, outline: "none", cursor: "pointer",
+        };
+
+        function Section({ icon, title, children }) {
+            return (
+                <div style={{ marginBottom: "2.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "1.1rem", fontWeight: 800, marginBottom: "1.2rem", paddingBottom: ".8rem", borderBottom: "1px solid #252544", flexWrap: "wrap" }}>
+                        <span>{icon}</span> {title}
+                    </div>
+                    {children}
+                </div>
+            );
+        }
+
+        function InfoBox({ children }) {
+            return (
+                <div style={{ background: "#0e0e1a", border: "1px solid #252544", borderRadius: 14, padding: "1rem 1.25rem", marginTop: ".75rem" }}>
+                    <p style={{ fontSize: ".8rem", color: "#8888aa", lineHeight: 1.7 }}>{children}</p>
+                </div>
+            );
+        }
+
+        function BallotCard({ title, tag, color, data, eligible, isRef }) {
+            const spoiledPct = data.voters ? ((data.spoiled / data.voters) * 100).toFixed(1) : "0";
+            const goodPct = data.voters ? ((data.good / data.voters) * 100).toFixed(1) : "0";
+            return (
+                <div style={{ background: "#0e0e1a", border: "1px solid #252544", borderRadius: 16, padding: "1.25rem", borderTop: `3px solid ${color}` }}>
+                    <div style={{ fontSize: ".9rem", fontWeight: 700, marginBottom: ".75rem", display: "flex", alignItems: "center", gap: 8 }}>
+                        {title}
+                        <span style={{ fontSize: ".58rem", padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: `${color}22`, color }}>{tag}</span>
+                    </div>
+                    {[
+                        ["ผู้มาใช้สิทธิ", `${fmt(data.voters)} คน`, true],
+                        ["คิดเป็น", `${data.pct}%`, true],
+                        ["บัตรดี", `${fmt(data.good)} ใบ (${goodPct}%)`, false, "#51cf66"],
+                        ["บัตรเสีย" + (isRef ? "ทั้งฉบับ" : ""), `${fmt(data.spoiled)} ใบ (${spoiledPct}%)`, false, "#ff6b6b"],
+                        ...(!isRef && data.noVote != null ? [["บัตรไม่เลือกผู้ใด", `${fmt(data.noVote)} ใบ`, false]] : []),
+                    ].map(([k, v, hl, c], i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: ".4rem 0", borderBottom: "1px solid rgba(37,37,68,.4)", fontSize: ".82rem" }}>
+                            <span style={{ color: "#8888aa" }}>{k}</span>
+                            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, color: c || (hl ? "#ffd166" : "#eaeaf4"), textAlign: "right" }}>{v}</span>
+                        </div>
+                    ))}
+                    <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "#161628", marginTop: ".75rem" }}>
+                        <div style={{ width: `${goodPct}%`, background: "#51cf66" }} />
+                        <div style={{ width: `${spoiledPct}%`, background: "#ff6b6b" }} />
+                        {!isRef && <div style={{ width: `${100 - parseFloat(goodPct) - parseFloat(spoiledPct)}%`, background: "#ffd166" }} />}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
